@@ -400,7 +400,7 @@ INPUT_D:
 	MOV P4, A
 	LJMP INPUT_EXIT
 INPUT_ERROR:
-	MOV A, #0Ah						;call error message
+	MOV A, #08h						;call error message
 	LCALL MESSAGE_PRINT			
 	MOV A, NUM_STORE
 	LJMP INPUT_KEY_WHEN_ERR
@@ -657,7 +657,7 @@ WHAT_SIMBOL_GKI_10:
 
 ;---Output Shift----------------------------------------------------------------
 OUTPUT_COMMAND:
-	MOV A, #6h								;print Message M_5
+	MOV A, #13h								;print Message M_5
 	LCALL MESSAGE_PRINT		
 	CLR DOUBL_SH
 	MOV A, NUM_STORE
@@ -919,68 +919,68 @@ MESSAGE_PRINT:
 		LCALL PRINT
 		LJMP EXIT_TO_PRINT
 	M_5:
-		CJNE A, #05h, M_6
-		MOV DPTR, #8040h				;'Code introduced'
-		MOV r4, #0Bh	
-		CLR SECSTRF
-		LCALL PRINT
-		LJMP EXIT_TO_PRINT
-	M_6:
-		CJNE A, #06h, M_7
-		MOV DPTR, #8050h				;'Left shift'
+		CJNE A, #05h, M_8
+		MOV DPTR, #8040h				;'Left shift'
 		MOV r4, #0Ch	
 		CLR SECSTRF
 		LCALL PRINT
 		LJMP EXIT_TO_PRINT
+;	M_6:
+;		CJNE A, #06h, M_7
+;		MOV DPTR, #8050h				
+;		MOV r4, #0Ch	
+;		CLR SECSTRF
+;		LCALL PRINT
+;		LJMP EXIT_TO_PRINT
 	M_7:
 		CJNE A, #07h, M_8
-		MOV DPTR, #8060h				;'Discontinuous output'
+		MOV DPTR, #8060h				;'Lock'
 		MOV r4, #0Ah	
 		CLR SECSTRF
 		LCALL PRINT
 		LJMP EXIT_TO_PRINT
 	M_8:
 		CJNE A, #08h, M_9
-		MOV DPTR, #8070h				;'Repeat input'
+		MOV DPTR, #8070h				;'ERROR input:D'
 		MOV r4, #10h
-		MOV r5, #10h
 		CLR SECSTRF
 		LCALL PRINT
 		LJMP EXIT_TO_PRINT
 	M_9:
 		CJNE A, #09h, M_10
-		MOV DPTR, #8090h				;'Lock:'
-		MOV r4, #0Eh
+		MOV DPTR, #8080h				;'CODE INPUTING'
+		MOV r4, #10h
 		CLR SECSTRF
 		LCALL PRINT
 		LJMP EXIT_TO_PRINT
 	M_10:
 		CJNE A, #0Ah, M_11
-		MOV DPTR, #80A0h				;'Error input'
+		MOV DPTR, #8090h				;'Error input:67'
 		MOV r4, #10h
-		MOV r5, #0Fh
-		SETB SECSTRF
+		CLR SECSTRF
 		LCALL PRINT
 		LJMP EXIT_TO_PRINT
 	M_11:
-		CJNE A, #0Bh, M_12
-		MOV DPTR, #80C0h				;'Shift left: 56+, 65, 7, C'
-		MOV r4, #09h
-		CLR SECSTRF
+		CJNE A, #0Bh, M_13
+		MOV DPTR, #80A0h				;'Error input:56+,67-,C'
+		MOV r4, #10h
+		MOV r5, #10h
+		SETB SECSTRF
 		LCALL PRINT
 		LJMP EXIT_TO_PRINT
-	M_12:
-		CJNE A, #0Ch, M_13
-		MOV DPTR, #80D0h				;'Input: D'
-		MOV r4, #0Ah
-		CLR SECSTRF
-		LCALL PRINT
-		LJMP EXIT_TO_PRINT
+;	M_12:
+;		CJNE A, #0Ch, M_13
+;		MOV DPTR, #80D0h				
+;		MOV r4, #0Ah
+;		CLR SECSTRF
+;		LCALL PRINT
+;		LJMP EXIT_TO_PRINT
 	M_13:
 		CJNE A, #0Dh, EXIT_TO_PRINT
-		MOV DPTR, #80E0h				;'Output:67'
-		MOV r4, #07h
-		CLR SECSTRF
+		MOV DPTR, #80C0h				;'INTERMITTENT Output'
+		MOV r4, #10h
+		MOV r5, #10h
+		SETB SECSTRF
 		LCALL PRINT
 		LJMP EXIT_TO_PRINT
 	EXIT_TO_PRINT:
