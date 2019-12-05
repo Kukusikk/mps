@@ -35,6 +35,8 @@ DOUBL_SH EQU 04h					;flag of double shift
 CUR_BIT EQU 08h					;current "editable" bit in input command,SIZE=BYTE
 NUM_STORE EQU 09h				;number in memory, gained in input command	
 SHIFT_PER EQU 0Ah				;period of shift
+PERIOD EQU 0Bh
+;ZNAK_PERIOD EQU 0Ch
 ORG 8000h
 	JMP start
 ;************************************************************
@@ -398,7 +400,7 @@ INPUT_D:
 	MOV P4, A
 	LJMP INPUT_EXIT
 INPUT_ERROR:
-	MOV A, #08h						;call error message
+	MOV A, #0Ah						;call error message
 	LCALL MESSAGE_PRINT			
 	MOV A, NUM_STORE
 	LJMP INPUT_KEY_WHEN_ERR
@@ -413,27 +415,6 @@ INPUT_EXIT:
 	LCALL WAIT_FOR_SHARP					;wait for '#'
 	RET	
 	
-	
-	
-	
-	
-	
-	
-	
-
-			
-		
-		
-			
-
-
-	
-	
-	
-
-
-
-
 	
 IND_POSITION:	
 MOV A,#90h 			;'write in memory' command
@@ -479,11 +460,7 @@ NUM_PRINT:
 
 ;---Left Shift----------------------------------------------------------------
 LSHIFT_COMMAND:
-    
-		
-		
-		
-	MOV A, #5h								;print Message M_5
+    MOV A, #5h								;print Message M_5
 	LCALL MESSAGE_PRINT		
     CLR DOUBL_SH
 	MOV A, NUM_STORE
@@ -494,6 +471,8 @@ LSHIFT_COMMAND:
 	SETB ET0								;turn on T0 interruptions
 	SETB TR0								;turn on T0 counter
 	CLR T0F									;clear my flag
+;	MOV PERIOD, #00h
+	LCALL PRINT_PERIOD
 
 LSH_FLAG_REVIEW:
 	JB INT1F, INPUT_LSH_KEY					;wait for key
@@ -507,6 +486,7 @@ LSH_FLAG_REVIEW:
 		MOV NUM_STORE, A
 		SWAP A
 		MOV P4, A							;print on lamps changed Num
+		LCALL PRINT_PERIOD
 		LJMP LSH_FLAG_REVIEW				;return to Flag review
 	INPUT_LSH_KEY:
 		CLR INT1F								;clear my flag
@@ -520,6 +500,7 @@ LSH_FLAG_REVIEW:
 			LJMP NOT_DEC						;not decrease if it is minimum
 			MUST_DEC:
 			DEC SHIFT_PER						;decrease period
+	
 			NOT_DEC:
 			LCALL PRINT_PERIOD
 			LJMP LSH_FLAG_REVIEW
@@ -533,140 +514,211 @@ LSH_FLAG_REVIEW:
 			LJMP NOT_INC						;not increase if it is maximum
 			MUST_INC:
 			INC SHIFT_PER						;increase period
+	
 			NOT_INC:
-	;		LCALL LSH_PRINT_MES
+			LCALL PRINT_PERIOD
 			LJMP LSH_FLAG_REVIEW
 		LSH_INPUT_B:
 			CJNE A, #11010000B, LSH_INPUT_SHARP	;is it '7'?
 			CPL ET0								 
 			CPL TR0	
 			CPL T0F	
-	;		LCALL LSH_PRINT_MES
+
 			LJMP LSH_FLAG_REVIEW
 		LSH_INPUT_SHARP:
 			CJNE A, #11011010B, LSH_INPUT_ERROR	;is it '#'?
+			JNB INT1F, $
+			CLR INT1F
 			CJNE A, #11011010B, LSH_INPUT_ERROR	;is it '#'?
 			MOV P4, #00h
 			CLR ET0								;turn off T0 interruptions
 			CLR TR0								;turn off T0 counter
-			
 			RET
 		LSH_INPUT_ERROR:
-			MOV A, #0Dh							;print error messages
+			MOV A, #0Bh							;print error messages
 			LCALL MESSAGE_PRINT
-	;		LCALL LSH_PRINT_MES
+			LCALL PRINT_PERIOD
 			LJMP LSH_FLAG_REVIEW
 			
 
 
-;input prirashenie in 2 line
-;LSH_PRINT_MES:
-;	MOV A, #1Eh				;maximum period
-;	CLR C					;clear C (SUBB uses it ._. )
-;	SUBB A, SHIFT_PER		;take difference
-;	JZ NOT_PRINT_55			;not print '55' if it is maximum
-;		MOV DPTR, #8150h	;print '55,'
-;		MOV A, #35h			;'5' code
-;		MOVX @DPTR, A
-;		LCALL PRINT_LETTER
-;		LCALL PRINT_LETTER
-;		MOV A, #2Ch			;',' code
-;		MOVX @DPTR, A
-;		LCALL PRINT_LETTER
-;	NOT_PRINT_55:
-;	MOV A, SHIFT_PER
-;	CLR C					
-;	SUBB A, #0Ah			;take difference with minimum
-;	JZ NOT_PRINT_66			;not print '66' if it is minimum
-;		MOV DPTR, #8150h	;print '66,'
-;		MOV A, #36h			;'6' code
-;		MOVX @DPTR, A
-;		LCALL PRINT_LETTER
-;		LCALL PRINT_LETTER
-;		MOV A, #2Ch			;',' code
-;		MOVX @DPTR, A
-;		LCALL PRINT_LETTER
-;	NOT_PRINT_66:
-;	MOV DPTR, #8150h		;print 'B'
-;	MOV A, #42h				;'B' code
-;	MOVX @DPTR, A
-;	LCALL PRINT_LETTER
-;	MOV A, #0A8h			;choose next stroke
-;	LCALL WAIT_FOR_DISPLAY
-;	LCALL PRINT_PERIOD		;print Period on Display
-;	RET
+
 	
 PRINT_PERIOD:
     MOV A, #0A8h			;choose next stroke
 	LCALL WAIT_FOR_DISPLAY
-	MOV A, #24h							;'+'
+	MOV DPTR, #8150h
+	MOV A, SHIFT_PER
+
+	
+PERIOD_0:                        ;if period=0
+	CJNE A, #1dh, PERIOD_LITTLE                   ;if period=0
+	MOV A, #4Fh
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
-	LJMP EXIT_SH_PRINT
-		
-		
-		
-	MOV A, SHIFT_PER
-	CLR C
-	SUBB A, #0Ah							;take difference with minimum
-	MOV B, #10								
-	DIV AB									;div Difference on 10
-	MOV DPTR, #8150h
-		CJNE A, #2, NOT_MAX_PER				;it is +10 (20)
-		MOV A, #2Bh							;'+'
-		MOVX @DPTR, A
-		LCALL PRINT_LETTER
-		MOV A, #31h							;'1'
-		MOVX @DPTR, A
-		LCALL PRINT_LETTER
-		MOV A, #30h							;'0'
-		MOVX @DPTR, A
-		LCALL PRINT_LETTER
-		LJMP EXIT_SH_PRINT
-	NOT_MAX_PER:
-		CJNE A, #1, LESS_ZERO_PER			;it is >0 (10-19)
-		MOV A, #2Bh							;'+'
-		MOVX @DPTR, A
-		LCALL PRINT_LETTER
-		MOV A, #30h							;base cod
-		ADD A, B							;get result code
-		MOVX @DPTR, A						;print result code
-		LCALL PRINT_LETTER
-		LJMP EXIT_SH_PRINT
-	LESS_ZERO_PER:
-		MOV A, B
-		JZ NOT_MIN_PER				;it is <0 (1-9)
-		MOV B, A
-		MOV A, #2Dh							;'-'
-		MOVX @DPTR, A
-		LCALL PRINT_LETTER
-		MOV A, #0Ah							;now we must take `10-dif` (because it's less than 0)
-		CLR C								
-		SUBB A, B
-		ADD A, #30h							;get result code
-		MOVX @DPTR, A						;print result code
-		LCALL PRINT_LETTER
-		LJMP EXIT_SH_PRINT
-	NOT_MIN_PER:							;it is -10 (0)
-		MOV A, #2Dh							;'-'
-		MOVX @DPTR, A
-		LCALL PRINT_LETTER
-		MOV A, #31h							;'1'
-		MOVX @DPTR, A
-		LCALL PRINT_LETTER
-;		MOV A, #31h							'0'
-;		MOVX @DPTR, A
-;		LCALL PRINT_LETTER								
-	EXIT_SH_PRINT:
+	RET
+PERIOD_LITTLE:	
+    MOV A, SHIFT_PER
+	MOV B,#10
+	DIV AB
+	CJNE A, #2, PERIOD_LITTLE
+    MOV A, #2Dh							;'-'
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	MOV A, #1dh                    ;A=30
+	SUBB A, SHIFT_PER              ;A=30-SHIFT_PER
+	LCALL WHAT_SIMBOL_GKI
+	RET
+PERIOD_BIG:	
+    MOV A, #2Bh							;'+'
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	MOV A, SHIFT_PER                 ;A=SHIFT_PER
+	SUBB A,#1dh                      ;A=SHIFT_PER-30
+	LCALL WHAT_SIMBOL_GKI
 	RET
 
+	
+WHAT_SIMBOL_GKI:
+	CJNE A, #0,WHAT_SIMBOL_GKI_1                 ; it is 0	
+	MOV A, #4Fh
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_1:
+	CJNE A, #1,WHAT_SIMBOL_GKI_2                 ; it is 1	
+	MOV A, #31h
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_2:
+	CJNE A, #2,WHAT_SIMBOL_GKI_3                 ; it is 2	
+	MOV A, #32h
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_3:
+	CJNE A, #3,WHAT_SIMBOL_GKI_4                 ; it is 3	
+	MOV A, #33h
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_4:
+	CJNE A, #4,WHAT_SIMBOL_GKI_5                 ; it is 4	
+	MOV A, #34h
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_5:
+	CJNE A, #5,WHAT_SIMBOL_GKI_6                 ; it is 5	
+	MOV A, #35h
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_6:
+	CJNE A, #6,WHAT_SIMBOL_GKI_7                 ; it is 6	
+	MOV A, #36h
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_7:
+	CJNE A, #7,WHAT_SIMBOL_GKI_8                 ; it is 7	
+	MOV A, #37h
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_8:
+	CJNE A, #8,WHAT_SIMBOL_GKI_9                 ; it is 8	
+	MOV A, #38h
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_9:
+	CJNE A, #9,PERIOD_BIG                 ; it is 9	
+	MOV A, #39h
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER
+	RET
+WHAT_SIMBOL_GKI_10:
+	CJNE A, #10,PERIOD_BIG                 ; it is 10	
+	MOV A, #31h  
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER                     ;print 1
+	MOV A, #4Fh
+	MOVX @DPTR, A
+	LCALL PRINT_LETTER                     ;print 0
+	RET
+		
+		
 
 ;----------------------------------------------------------------------------- 
 
 ;---Output Shift----------------------------------------------------------------
 OUTPUT_COMMAND:
-	
-	RET
+	MOV A, #6h								;print Message M_5
+	LCALL MESSAGE_PRINT		
+	CLR DOUBL_SH
+	MOV A, NUM_STORE
+	SWAP A
+    MOV P4, A	
+	MOV SHIFT_PER,#14h						;shift period := 20 (20 * 0.1 sec = 2 sec)
+	MOV r7, SHIFT_PER						;mov in programm counter shift period
+	SETB ET0								;turn on T0 interruptions
+	SETB TR0								;turn on T0 counter
+	CLR T0F	
+	MOV PERIOD, #03h                       ;flag 3 or 1 you mast now, so if you input 67 period must stay =3
+	OUT_FLAG_REVIEW:
+	JB INT1F, INPUT_OUT_KEY					;wait for key
+	JNB T0F, OUT_FLAG_REVIEW				;wait for timer
+	OUT_NUM:
+		CLR T0F								;clear my flag
+		DJNZ r7, OUT_FLAG_REVIEW			;decrease and compare with zero
+		MOV r7, SHIFT_PER					;reinit programm counter
+		MOV A, NUM_STORE
+		SWAP A
+		MOV P4, A							;print on lamps changed Num
+		LJMP OUT_FLAG_REVIEW				;return to Flag review
+	INPUT_OUT_KEY:
+		CLR INT1F								;clear my flag
+		CJNE A, #11001010B, OUT_INPUT_SHARP	;is it '6'?
+		JNB INT1F, $
+		CLR INT1F
+		CJNE A, #11010000B, OUT_INPUT_ERROR	;is it '7'?
+		JNB INT1F, $
+		CLR INT1F
+		MOV A, SHIFT_PER
+		
+		
+		CJNE A, #11001010B, PERIOD_13	;SHIFT_PER is 2?
+		MOV A, PERIOD
+	    CJNE A, #03h, PERIOD_1          ; you must be 3?
+		MOV SHIFT_PER, #1Eh             ;  SHIFT_PER MUST BE 3
+		MOV PERIOD, #01h
+		LJMP OUT_FLAG_REVIEW
+		PERIOD_1:
+		    MOV SHIFT_PER, #0Ah             ;  SHIFT_PER MUST BE 1
+		    MOV PERIOD, #03h
+		    LJMP OUT_FLAG_REVIEW
+	PERIOD_13:                          ;SHIFT_PER is 3 OR 2
+	    MOV SHIFT_PER, #14h             ;  SHIFT_PER MUST BE 2
+		LJMP OUT_FLAG_REVIEW
+				
+	OUT_INPUT_SHARP:
+	    CJNE A, #11011010B, OUT_INPUT_ERROR	;is it '#'?
+		JNB INT1F, $
+		CLR INT1F
+		CJNE A, #11011010B, OUT_INPUT_ERROR	;is it '#'?
+		MOV P4, #00h
+		CLR ET0								;turn off T0 interruptions
+		CLR TR0								;turn off T0 counter
+		RET
+	OUT_INPUT_ERROR:
+		MOV A, #0Ah							;print error messages
+		LCALL MESSAGE_PRINT
+		LCALL PRINT_PERIOD
+		LJMP OUT_FLAG_REVIEW	
 ;-----------------------------------------------------------------------------
 
 ;---Key Interrupt handler-----------------------------------------------------
