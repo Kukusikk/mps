@@ -199,9 +199,9 @@ KEY_ERROR:							;no 'C', '8'
 	LCALL CHECK_ERR_LIMIT			;are we going to block
 	JNB BLKF, CMD_CHOICE			;return to begin of command choice if not block
 CMD_CHOICE_EXIT:
-;    MOV P4,#66h
+;    MOV P4,#55h
 ;	LJMP $
-    MOV A, #7h		                ;bkoking				
+    MOV A, #07h		                ;bkoking				
 	LCALL MESSAGE_PRINT        
 ;	RET
 	LJMP $
@@ -466,7 +466,7 @@ LSHIFT_COMMAND:
 	MOV A, NUM_STORE
 	SWAP A
     MOV P4, A	
-	MOV SHIFT_PER, #1dh						;shift period := 30 (30 * 0.1 sec = 3 sec)
+	MOV SHIFT_PER, #1Eh						;shift period := 30 (30 * 0.1 sec = 3 sec)
 	MOV r7, SHIFT_PER						;mov in programm counter shift period
 	SETB ET0								;turn on T0 interruptions
 	SETB TR0								;turn on T0 counter
@@ -487,7 +487,8 @@ LSH_FLAG_REVIEW:
 		MOV NUM_STORE, A
 		SWAP A
 		MOV P4, A							;print on lamps changed Num
-		LCALL PRINT_PERIOD
+		MOV A, SHIFT_PER
+        LCALL PRINT_PERIOD
 		LJMP LSH_FLAG_REVIEW				;return to Flag review
 	
 	INPUT_LSH_KEY:
@@ -500,11 +501,12 @@ LSH_FLAG_REVIEW:
 			MOV A, #5h								;print Message M_5
 	        LCALL MESSAGE_PRINT	
 			MOV A, SHIFT_PER
-			CJNE A, #14h, MUST_DEC				;compare period with minimum
-			LCALL PERIOD_20
+			CJNE A, #14h, MUST_DEC
+	        LCALL PRINT_PERIOD
 			LJMP LSH_FLAG_REVIEW						;not decrease if it is minimum
 		MUST_DEC:
 			DEC SHIFT_PER						;decrease period
+
 			LCALL PRINT_PERIOD
 			LJMP LSH_FLAG_REVIEW
 		
@@ -516,11 +518,13 @@ LSH_FLAG_REVIEW:
 			MOV A, #5h								;print Message M_5
 	        LCALL MESSAGE_PRINT	
 			MOV A, SHIFT_PER
-			CJNE A, #28h, MUST_INC				;compare with maximum
-            LCALL PERIOD_40
+			CJNE A, #28h, MUST_INC
+			LCALL PRINT_PERIOD
 			LJMP LSH_FLAG_REVIEW						;not increase if it is maximum
+			
 		MUST_INC:
 			INC SHIFT_PER						;increase period
+
 			LCALL PRINT_PERIOD
 			LJMP LSH_FLAG_REVIEW
 		
@@ -549,7 +553,7 @@ LSH_FLAG_REVIEW:
 		LSH_INPUT_ERROR:
 			MOV A, #0Bh							;print error messages
 			LCALL MESSAGE_PRINT
-			LCALL PRINT_PERIOD
+;			LCALL PRINT_PERIOD
 			LJMP LSH_FLAG_REVIEW
 			
 
@@ -557,162 +561,204 @@ LSH_FLAG_REVIEW:
 
 	
 PRINT_PERIOD:
-    CJNE A, #14h, PRINT_PERIOD2				;compare period with mini
-    LCALL PERIOD_20
-	ret
-PRINT_PERIOD2:
-	CJNE A, #28h, PRINT_PERIOD3				;compare period with mini
-    LCALL PERIOD_40
-	ret
-	
-	
-	
-PRINT_PERIOD3:
-
-
-    MOV A, #0A8h			;choose next stroke
-	LCALL WAIT_FOR_DISPLAY
-	MOV DPTR, #8150h
-	MOV A, SHIFT_PER
+    MOV A,#0A8h
+    LCALL WAIT_FOR_DISPLAY
+    MOV DPTR, #8150h
+    MOV A,SHIFT_PER
 
 	
 PERIOD_0:                        ;if period=0
-	CJNE A, #1dh, PERIOD_LITTLE                   ;if period=0
+	CJNE A, #1Eh, PERIOD_LITTLE                   ;if period=0
 	MOV A, #4Fh
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
-
-    	
-     
+   
 PERIOD_LITTLE:	
+
     MOV A, SHIFT_PER
-	MOV B,#10
+	
+	MOV B,#0Ah
 	DIV AB
 	CJNE A, #2, PERIOD_BIG
     MOV A, #2Dh							;'-'
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
-	MOV A, #1dh                    ;A=30
-	SUBB A, SHIFT_PER              ;A=30-SHIFT_PER
-	LCALL WHAT_SIMBOL_GKI
-	RET
+	LJMP PERIOD_20
 PERIOD_BIG:	
     MOV A, #2Bh							;'+'
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
-	MOV A, SHIFT_PER                 ;A=SHIFT_PER
-	SUBB A,#1dh                      ;A=SHIFT_PER-30
-	LCALL WHAT_SIMBOL_GKI
-	RET
+	LJMP PERIOD_20
+
+
+
+PERIOD_20:
+    MOV A, SHIFT_PER
+    CJNE A, #14h ,PERIOD_21
+	LCALL WHAT_SIMBOL_GKI_1
+	LCALL WHAT_SIMBOL_GKI_0
+	LJMP PERIOD_EXIR
+PERIOD_21:
+    CJNE A, #15h ,PERIOD_22
+	LCALL WHAT_SIMBOL_GKI_9
+	LJMP PERIOD_EXIR
+PERIOD_22:
+    CJNE A, #16h ,PERIOD_23
+	LCALL WHAT_SIMBOL_GKI_8
+	LJMP PERIOD_EXIR
+PERIOD_23:
+    CJNE A, #17h ,PERIOD_24
+	LCALL WHAT_SIMBOL_GKI_7
+	LJMP PERIOD_EXIR
+PERIOD_24:
+    CJNE A, #18h ,PERIOD_25
+	LCALL WHAT_SIMBOL_GKI_6
+	LJMP PERIOD_EXIR
+PERIOD_25:
+    CJNE A, #19h ,PERIOD_26
+	LCALL WHAT_SIMBOL_GKI_5
+	LJMP PERIOD_EXIR
+PERIOD_26:
+    CJNE A, #1Ah ,PERIOD_27
+	LCALL WHAT_SIMBOL_GKI_4
+	LJMP PERIOD_EXIR
+PERIOD_27:
+    CJNE A, #1Bh ,PERIOD_28
+	LCALL WHAT_SIMBOL_GKI_3
+	LJMP PERIOD_EXIR
+PERIOD_28:
+    CJNE A, #1Ch ,PERIOD_29
+	LCALL WHAT_SIMBOL_GKI_2
+	LJMP PERIOD_EXIR
+PERIOD_29:
+    CJNE A, #1Dh ,PERIOD_30
+	LCALL WHAT_SIMBOL_GKI_1
+	LJMP PERIOD_EXIR
+PERIOD_30:
+    CJNE A, #1Eh ,PERIOD_31
+	LCALL WHAT_SIMBOL_GKI_0
+	LJMP PERIOD_EXIR
+PERIOD_31:
+    CJNE A, #1Fh ,PERIOD_32
+	LCALL WHAT_SIMBOL_GKI_1
+	LJMP PERIOD_EXIR
+PERIOD_32:
+    CJNE A, #20h ,PERIOD_33
+	LCALL WHAT_SIMBOL_GKI_2
+	LJMP PERIOD_EXIR
+PERIOD_33:
+    CJNE A, #21h ,PERIOD_34
+	LCALL WHAT_SIMBOL_GKI_3
+	LJMP PERIOD_EXIR
+PERIOD_34:
+    CJNE A, #22h ,PERIOD_35
+	LCALL WHAT_SIMBOL_GKI_4
+	LJMP PERIOD_EXIR
+PERIOD_35:
+    CJNE A, #23h ,PERIOD_36
+	LCALL WHAT_SIMBOL_GKI_5
+	LJMP PERIOD_EXIR
+PERIOD_36:
+    CJNE A, #124h ,PERIOD_37
+	LCALL WHAT_SIMBOL_GKI_6
+	LJMP PERIOD_EXIR
+PERIOD_37:
+    CJNE A, #25h ,PERIOD_38
+	LCALL WHAT_SIMBOL_GKI_7
+	LJMP PERIOD_EXIR
+PERIOD_38:
+    CJNE A, #26h ,PERIOD_39
+	LCALL WHAT_SIMBOL_GKI_8
+	LJMP PERIOD_EXIR
+PERIOD_39:
+    CJNE A, #27h ,PERIOD_40
+	LCALL WHAT_SIMBOL_GKI_9
+	LJMP PERIOD_EXIR
+PERIOD_40:
+    CJNE A, #28h ,PERIOD_EXIR
+	LCALL WHAT_SIMBOL_GKI_1
+	LCALL WHAT_SIMBOL_GKI_0
+PERIOD_EXIR:
+    RET
+
+
+
+
+
+
+
+
+
+
+
 
 	
-WHAT_SIMBOL_GKI:
-	CJNE A, #0,WHAT_SIMBOL_GKI_1                 ; it is 0	
+WHAT_SIMBOL_GKI_0:
+;	CJNE A, #0,WHAT_SIMBOL_GKI_1                 ; it is 0	
 	MOV A, #4Fh
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
 WHAT_SIMBOL_GKI_1:
-	CJNE A, #1,WHAT_SIMBOL_GKI_2                 ; it is 1	
+;	CJNE A, #1,WHAT_SIMBOL_GKI_2                 ; it is 1	
 	MOV A, #31h
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
 WHAT_SIMBOL_GKI_2:
-	CJNE A, #2,WHAT_SIMBOL_GKI_3                 ; it is 2	
+;	CJNE A, #2,WHAT_SIMBOL_GKI_3                 ; it is 2	
 	MOV A, #32h
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
 WHAT_SIMBOL_GKI_3:
-	CJNE A, #3,WHAT_SIMBOL_GKI_4                 ; it is 3	
+;	CJNE A, #3,WHAT_SIMBOL_GKI_4                 ; it is 3	
 	MOV A, #33h
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
 WHAT_SIMBOL_GKI_4:
-	CJNE A, #4,WHAT_SIMBOL_GKI_5                 ; it is 4	
+;	CJNE A, #4,WHAT_SIMBOL_GKI_5                 ; it is 4	
 	MOV A, #34h
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
 WHAT_SIMBOL_GKI_5:
-	CJNE A, #5,WHAT_SIMBOL_GKI_6                 ; it is 5	
+;	CJNE A, #5,WHAT_SIMBOL_GKI_6                 ; it is 5	
 	MOV A, #35h
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
 WHAT_SIMBOL_GKI_6:
-	CJNE A, #6,WHAT_SIMBOL_GKI_7                 ; it is 6	
+;	CJNE A, #6,WHAT_SIMBOL_GKI_7                 ; it is 6	
 	MOV A, #36h
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
 WHAT_SIMBOL_GKI_7:
-	CJNE A, #7,WHAT_SIMBOL_GKI_8                 ; it is 7	
+;	CJNE A, #7,WHAT_SIMBOL_GKI_8                 ; it is 7	
 	MOV A, #37h
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
 WHAT_SIMBOL_GKI_8:
-	CJNE A, #8,WHAT_SIMBOL_GKI_9                 ; it is 8	
+;	CJNE A, #8,WHAT_SIMBOL_GKI_9                 ; it is 8	
 	MOV A, #38h
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
 WHAT_SIMBOL_GKI_9:
-	CJNE A, #09h,WHAT_SIMBOL_GKI_10                 ; it is 9	
+;	CJNE A, #9,WHAT_SIMBOL_GKI_EXIT                 ; it is 9	
 	MOV A, #39h
 	MOVX @DPTR, A
 	LCALL PRINT_LETTER
 	RET
-WHAT_SIMBOL_GKI_10:
-    MOV A, #31h  
-	MOVX @DPTR, A
-	LCALL PRINT_LETTER                     ;print 1
-	MOV A, #4Fh
-	MOVX @DPTR, A
-	LCALL PRINT_LETTER                     ;print 0
+;WHAT_SIMBOL_GKI_EXIT:
+;	RET
 	
 
-PERIOD_20:	
-    MOV A, #0A8h			;choose next stroke
-	LCALL WAIT_FOR_DISPLAY
-	MOV DPTR, #8150h
-	MOV A, SHIFT_PER
-	
-;	CJNE A, #14h, PERIOD_40
-	MOV A, #2Dh							;'-'
-	MOVX @DPTR, A
-	LCALL PRINT_LETTER
-	
 
-	MOV A, #31h  
-	MOVX @DPTR, A
-	LCALL PRINT_LETTER                     ;print 1
-	MOV A, #4Fh
-	MOVX @DPTR, A
-	LCALL PRINT_LETTER                     ;print 0
-	RET
-PERIOD_40:
-    MOV A, #0A8h			;choose next stroke
-	LCALL WAIT_FOR_DISPLAY
-	MOV DPTR, #8150h
-	MOV A, SHIFT_PER
-	
-;    CJNE A, #28h, PERIOD_LITTLE
-	MOV A, #2Bh							;'+'
-	MOVX @DPTR, A
-	LCALL PRINT_LETTER
-
-	MOV A, #31h  
-	MOVX @DPTR, A
-	LCALL PRINT_LETTER                     ;print 1
-	MOV A, #4Fh
-	MOVX @DPTR, A
-	LCALL PRINT_LETTER                     ;print 0
-	RET
 		
 
 ;----------------------------------------------------------------------------- 
@@ -987,7 +1033,7 @@ MESSAGE_PRINT:
 		LCALL PRINT
 		LJMP EXIT_TO_PRINT
 	M_5:
-		CJNE A, #05h, M_8
+		CJNE A, #05h, M_7
 		MOV DPTR, #8040h				;'Left shift'
 		MOV r4, #0Ch	
 		CLR SECSTRF
@@ -1002,6 +1048,8 @@ MESSAGE_PRINT:
 ;		LJMP EXIT_TO_PRINT
 	M_7:
 		CJNE A, #07h, M_8
+;		MOV P4,#66H
+;		LJMP $
 		MOV DPTR, #8060h				;'Lock'
 		MOV r4, #0Ah	
 		CLR SECSTRF
